@@ -7,12 +7,13 @@ from selenium.common.exceptions import NoSuchElementException
 # Configuration
 config = {
     "message_intro_1": "Hi, are you in Kyiv?",
-    "message_2": "Great, let's chat on Instagram instead, it's better, @ig_handle_here",
+    "message_2": ("Great, let's chat on Instagram instead, @ig_handle_here"),
     "positive_words": ["yes"],
     "username": "your_username",
     "password": "your_password",
-    "webdriver_path": "path/to/your/webdriver"
+    "webdriver_path": "path/to/your/webdriver",
 }
+
 
 def login(driver):
     driver.get("https://badoo.com/signin/")
@@ -26,6 +27,7 @@ def login(driver):
 
     time.sleep(5)  # Wait for login to complete
 
+
 def get_all_matches(driver):
     matches = []
 
@@ -37,26 +39,36 @@ def get_all_matches(driver):
 
     try:
         # Find the container element that holds all the match elements
-        matches_container = driver.find_element_by_css_selector(".matches-container")
+        matches_container = driver.find_element_by_css_selector(
+            ".matches-container")
 
         # Find all match elements within the container
-        match_elements = matches_container.find_elements_by_css_selector(".match-element")
+        match_elements = matches_container.find_elements_by_css_selector(
+            ".match-element"
+        )
 
-        # Extract the match data from each match element and append it to the matches list
+        # Extract the match data from each match element
+        # and append it to the matches list
         for match_element in match_elements:
             match_data = {
-                "id": match_element.get_attribute("data-match-id"),
-                "name": match_element.find_element_by_css_selector(".match-name").text,
-                "profile_url": match_element.find_element_by_css_selector("a.match-profile-link").get_attribute("href")
+                "id": match_element.get_attribute(
+                    "data-match-id"),
+                "name": match_element.find_element_by_css_selector(
+                    ".match-name").text,
+                "profile_url": match_element.find_element_by_css_selector(
+                    "a.match-profile-link"
+                ).get_attribute("href"),
             }
             matches.append(match_data)
 
     except NoSuchElementException:
-        # If the container or match elements are not found, print a message and return an empty list
+        # If the container or match elements are not found,
+        # print a message and return an empty list
         print("Unable to find match elements on the page")
         return []
 
     return matches
+
 
 def get_conversation(driver, match):
     # Navigate to the match's profile page using the URL from the match data
@@ -69,25 +81,34 @@ def get_conversation(driver, match):
 
     try:
         # Find the container element that holds all the message elements
-        messages_container = driver.find_element_by_css_selector(".messages-container")
+        messages_container = driver.find_element_by_css_selector(
+            ".messages-container")
 
         # Find all message elements within the container
-        message_elements = messages_container.find_elements_by_css_selector(".message-element")
+        message_elements = messages_container.find_elements_by_css_selector(
+            ".message-element"
+        )
 
-        # Extract the message data from each message element and append it to the conversation list
+        # Extract the message data from each message element
+        # and append it to the conversation list
         for message_element in message_elements:
             message_data = {
-                "text": message_element.find_element_by_css_selector(".message-text").text,
-                "from_bot": "message-sent" in message_element.get_attribute("class")
+                "text": message_element.find_element_by_css_selector(
+                    ".message-text"
+                ).text,
+                "from_bot": "message-sent" in message_element.get_attribute(
+                    "class"),
             }
             conversation.append(message_data)
 
     except NoSuchElementException:
-        # If the container or message elements are not found, print a message and return an empty list
+        # If the container or message elements are not found,
+        # print a message and return an empty list
         print("Unable to find message elements on the page")
         return []
 
     return conversation
+
 
 def send_message(driver, match, message):
     # Navigate to the match's profile page using the URL from the match data
@@ -98,7 +119,8 @@ def send_message(driver, match, message):
 
     try:
         # Find the message input field element
-        message_input_field = driver.find_element_by_css_selector(".message-input")
+        message_input_field = driver.find_element_by_css_selector(
+            ".message-input")
 
         # Type the message into the input field
         message_input_field.send_keys(message)
@@ -110,11 +132,13 @@ def send_message(driver, match, message):
         time.sleep(2)
 
     except NoSuchElementException:
-        # If the message input field is not found, print a message and do nothing
+        # If the message input field is not found,
+        # print a message and do nothing
         print("Unable to find message input field on the page")
 
+
 def main():
-    driver = webdriver.Chrome(config["webdriver_path"])
+    driver = webdriver.Chrome()
 
     try:
         login(driver)
@@ -128,14 +152,42 @@ def main():
                 if not conversation:
                     send_message(driver, match, config["message_intro_1"])
                 else:
-                    last_message = conversation[-1]
+                    message_intro_1_sent = False
+                    positive_response_received = False
 
-                    if any(word in last_message.lower() for word in config["positive_words"]) and config["message_2"] not in conversation:
-                        send_message(driver, match, config["message_2"])
+                    for msg in conversation:
+                        if msg["from_bot"] and \
+                                msg["text"] == config["message_intro_1"]:
+                            message_intro_1_sent = True
+
+                        if (
+                            message_intro_1_sent
+                            and not msg["from_bot"]
+                            and any(
+                                word in msg["text"].lower()
+                                for word in config["positive_words"]
+                            )
+                        ):
+                            positive_response_received = True
+                            break
+
+                    if not message_intro_1_sent:
+                        send_message(driver, match, config["message_intro_1"])
+                    elif positive_response_received:
+                        # Check if the bot has already sent message_2
+                        already_sent_message_2 = any(
+                            msg["text"] == config["message_2"]
+                            for msg in conversation
+                            if msg["from_bot"]
+                        )
+
+                        if not already_sent_message_2:
+                            send_message(driver, match, config["message_2"])
 
             time.sleep(random.uniform(60, 300))
     finally:
         driver.quit()
+
 
 if __name__ == "__main__":
     main()
