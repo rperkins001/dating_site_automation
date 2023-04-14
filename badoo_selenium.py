@@ -9,24 +9,39 @@ config = {
     "message_intro_1": "Hi, are you in Kyiv?",
     "message_2": ("Great, let's chat on Instagram instead, @ig_handle_here"),
     "positive_words": ["yes"],
-    "username": "your_username",
-    "password": "your_password",
-    "webdriver_path": "path/to/your/webdriver",
+    "webdriver_path": "/Users/00-facebook/Downloads/chromedriver_mac64/chromedriver",
+    "facebook_email": "your_facebook_email",
+    "facebook_password": "your_facebook_password",
 }
 
 
 def login(driver):
     driver.get("https://badoo.com/signin/")
 
-    username_field = driver.find_element_by_name("email")
-    password_field = driver.find_element_by_name("password")
+    # Click on the "Sign in with Facebook" button
+    facebook_login_button = driver.find_element_by_xpath('//span[contains(text(), "Facebook")]')
+    facebook_login_button.click()
 
-    username_field.send_keys(config["username"])
-    password_field.send_keys(config["password"])
-    password_field.send_keys(Keys.RETURN)
+    # Switch to the Facebook login window
+    time.sleep(2)
+    driver.switch_to.window(driver.window_handles[-1])
 
-    time.sleep(5)  # Wait for login to complete
+    # Enter your Facebook email and password
+    email_input = driver.find_element_by_id("email")
+    email_input.send_keys(config["facebook_email"])
+    password_input = driver.find_element_by_id("pass")
+    password_input.send_keys(config["facebook_password"])
 
+    # Click the "Log In" button
+    login_button = driver.find_element_by_name("login")
+    login_button.click()
+
+    # Switch back to the Badoo window
+    time.sleep(2)
+    driver.switch_to.window(driver.window_handles[0])
+
+    # Wait for login to complete
+    time.sleep(5)
 
 def get_all_matches(driver):
     matches = []
@@ -138,7 +153,7 @@ def send_message(driver, match, message):
 
 
 def main():
-    driver = webdriver.Chrome()
+    driver = webdriver.Chrome(config["webdriver_path"])
 
     try:
         login(driver)
